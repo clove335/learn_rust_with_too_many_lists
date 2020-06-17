@@ -1,54 +1,44 @@
-use std::mem;
-
-pub struct List {
-    head: Link,
+pub struct List<T> {
+    head: Link<T>,
 }
 
-enum Link {
-    Empty,
-    More(Box<Node>),
+type Link<T> = Option<Box<Node<T>>>;
+
+struct Node<T> {
+    elem: T,
+    next: Link<T>,
 }
 
-struct Node {
-    elem: i32,
-    next: Link,
-}
-
-impl List {
+impl<T> List<T> {
     // add code here
     pub fn new() -> Self {
-        List { head: Link::Empty }
+        List { head: None }
     }
 
-    pub fn push(&mut self, elem: i32) {
+    pub fn push(&mut self, elem: T) {
         let new_node = Box::new(Node {
             elem: elem,
             //next: mem::replace(self, List::new()),
             // was not able to compile the code below -> Definition of struct Node was mistaken.
-            next: mem::replace(&mut self.head, Link::Empty), 
+            next: self.head.take(), 
         });
 
-        self.head = Link::More(new_node);
+        self.head = Some(new_node);
     }
 
-    pub fn pop(&mut self) -> Option<i32> {
-        match mem::replace(&mut self.head, Link::Empty) {
-            Link::Empty => None,
-            Link::More(node) => {
-                // TODO
-                self.head = node.next;
-                Some(node.elem)
-            }
-        }
+    pub fn pop(&mut self) -> Option<T> {
+        self.head.take().map(|node| {
+            self.head = node.next;
+            node.elem
+        })
     }
 }
 
-impl Drop for List {
+impl<T> Drop for List<T> {
     fn drop(&mut self) {
-        let mut cur_link = mem::replace(&mut self.head, Link::Empty);
-
-        while let Link::More(mut boxed_node) = cur_link {
-            cur_link = mem::replace(&mut boxed_node.next, Link::Empty);
+        let mut cur_link = self.head.take();
+        while let Some(mut boxed_node) = cur_link {
+            cur_link = boxed_node.next.take();
             // boxed_node goes out of scope and gets dropped here
             // but its Node's next field has been set to Link::Empty
         }
